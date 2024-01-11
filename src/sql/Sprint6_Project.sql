@@ -1,4 +1,3 @@
-
 -- ПРОЕКТ СПРИНТ 6
 
 -- Шаг 2. Создать таблицу group_log в Vertica
@@ -11,11 +10,12 @@ create table if not exists STV2023121121__STAGING.group_log(
 	user_id bigint not null,
 	user_id_from int,
 	event varchar(6),
-	"datetime" timestamp
+	date_time timestamp
 )
 ORDER BY group_id, user_id
 SEGMENTED BY HASH(group_id) ALL NODES;
-;
+PARTITION BY date_time::date
+GROUP BY calendar_hierarchy_day(date_time::date, 3, 2);;
 
 select * from STV2023121121__STAGING.group_log;
 
@@ -63,10 +63,10 @@ create table STV2023121121__DWH.s_auth_history(
 	load_dt datetime,
 	load_src varchar(20)
 )
-order by load_dt
+order by event_dt
 SEGMENTED BY hk_l_user_group_activity all nodes
-PARTITION BY load_dt::date
-GROUP BY calendar_hierarchy_day(load_dt::date, 3, 2);
+PARTITION BY event_dt::date
+GROUP BY calendar_hierarchy_day(event_dt::date, 3, 2);
 	
 
 INSERT INTO STV2023121121__DWH.s_auth_history(hk_l_user_group_activity, user_id_from, event, event_dt, load_dt, load_src)
@@ -74,7 +74,7 @@ select
 	luga.hk_l_user_group_activity,
 	gl.user_id_from,
 	gl.event,
-	gl."datetime" as event_dt,
+	gl.date_time as event_dt,
 	now() as load_dt,
 	's3' as load_src
 from STV2023121121__STAGING.group_log as gl
@@ -101,8 +101,6 @@ with user_group_messages as (
 		STV2023121121__DWH.h_users hs on luga.hk_user_id = hs.hk_user_id 
 	join
 		STV2023121121__DWH.l_user_message lum on hs.hk_user_id = lum.hk_user_id 
-	join
-		STV2023121121__DWH.h_dialogs hd on lum.hk_message_id = hd.hk_message_id
 	group by
 		hg.hk_group_id
 )
@@ -113,8 +111,7 @@ order by cnt_users_in_group_with_messages
 limit 10
 ;
 
-
-
+		
 -- Шаг 7.2. Подготовить CTE user_group_log
 with user_group_log as (
 	select 
@@ -185,8 +182,6 @@ with user_group_log as (
 		STV2023121121__DWH.h_users hs on luga.hk_user_id = hs.hk_user_id 
 	join
 		STV2023121121__DWH.l_user_message lum on hs.hk_user_id = lum.hk_user_id 
-	join
-		STV2023121121__DWH.h_dialogs hd on lum.hk_message_id = hd.hk_message_id
 	group by
 		hg.hk_group_id
 )
@@ -198,5 +193,3 @@ select
 from user_group_log as ugl
 left join user_group_messages as ugm on ugl.hk_group_id = ugm.hk_group_id
 order by ugm.cnt_users_in_group_with_messages / ugl.cnt_added_users desc;
-
-

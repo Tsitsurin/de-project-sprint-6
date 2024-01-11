@@ -31,7 +31,6 @@ head {{ files }}
 
 @dag(schedule_interval=None, start_date=pendulum.parse('2022-07-13'))
 def sprint6_PROJECT_get_data():
-    #bucket_files = ('group_log.csv')
     group_log_tasks = [
         PythonOperator(
             task_id=f'load_group_log',

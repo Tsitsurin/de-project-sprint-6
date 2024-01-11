@@ -22,7 +22,6 @@ def load_dataset_file_to_vertica(
     type_override: Optional[Dict[str, str]] = None,
 ):
     df = pd.read_csv(dataset_path, dtype=type_override)
-    #преобразуем тип данных, чтобы корректно обрабатывались пустые значения
     df['user_id_from'] = pd.array(df['user_id_from'], dtype="Int64")
     num_rows = len(df)
     vertica_conn = vertica_python.connect(
